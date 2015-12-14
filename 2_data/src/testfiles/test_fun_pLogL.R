@@ -27,7 +27,7 @@ factors.test <- c("x1", "x2", "x3", "x4")# names of independent variables
 .P <- 5  # no. of lags of dependent variable (in levels) 
 .Q <- 5  # no. of lags of independent variable (in levels) 
 # test parameters
-N.test <- 2 # number of iterations to run
+N.test <- 25 # number of iterations to run
 coef.sd <- 1  # sd used for generating random coefficients
 coef.mean <- 0  # mean used for generating random coefficients
 coef.scale <- 0.1 # coef scaling factor, for coef.scale*rnorm()
@@ -53,7 +53,7 @@ N.Indepvar.test <- length(factors.test)  # no. of independent variables
 N.regression.terms <-   # number of regression terms:
   1+1+N.Indepvar.test+.P-1+(.Q)*N.Indepvar.test
   # diff(y)~const +lag y +lag(xn) +(p-1)*lag(diff(y)) +(q-1)*lag(diff(xn))
-Logs.test <- c(rep(TRUE, N.Indepvar.test))  # use logs for all y, x1, ..., xn
+Logs.test <- rep(TRUE, N.Indepvar.test)  # use logs for all y, x1, ..., xn
 
 # Initialize variables
 N.exp.growth <- 0
@@ -316,9 +316,9 @@ mtext("qqline(*, dist = qchisq(., df=5), prob = c(0.25, 0.75))")
 
 histogram <- data.frame(LL.ratio.all = as.numeric(LL.ratio.all), 
                         rchisq = rchisq(10000, df = 5))
-ggplot(histogram) + 
+plot(ggplot(histogram) + 
   geom_histogram(aes(LL.ratio.all, fill = "red", alpha = 0.2)) + 
   geom_histogram(aes(rchisq, fill = "blue", alpha = 0.2)) + 
-  ggtitle("Histogram of LL.ratio.all vs a chi-square distributed random sample\n mu = 5")
+  ggtitle("Histogram of LL.ratio.all vs a chi-square distributed random sample\n mu = 5"))
 
-cat("To view code profiling use \"summaryRprof(\"profile_pLogL_test.out\")\"")
+cat("To view code profiling exec \"summaryRprof(\"profile_pLogL_test.out\")\"")
