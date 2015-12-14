@@ -1,5 +1,8 @@
-# ERROR CURRENTLY NONE OF THE IMPLEMENTATION IS TAKING INTO ACCOUNT THE LOG FORM 
-# OF THE VARIABLES FOR CALCULATING THE LIKELIHOOD
+# POSSIBLE ERROR SOURCE?: currently not taking any extra effort to handle input
+# format of variables (whether log or level). 
+# The final output is desired to be log likelihood. The formula for the log
+# likelihood should already be assuming log input format. Therefore no
+# additional handling should be necessary. However a double check would be good.
 require(plm)
 require(xts)
 pLogL <- function(input, testing.environment = FALSE){
@@ -51,7 +54,9 @@ pLogL <- function(input, testing.environment = FALSE){
     SS.idx <- rownames(SS)  # row index of SS
     SS.fitted <- reg.out$details$gm.pmg$fitted.values[SS.idx]
     SS.resid <- reg.out$details$gm.pmg$residuals[SS.idx]
-    if(testing.environment){
+    if(testing.environment){ #workaround for test_fun_pLogL.R:
+      # in test, the rownames for fitted.values and residuals are numeric,
+      # but rownames for SS are characters (as is normally the case with data)
       SS.fitted <- reg.out$details$gm.pmg$fitted.values[as.numeric(SS.idx)]
       SS.resid <- reg.out$details$gm.pmg$residuals[as.numeric(SS.idx)]
     }
@@ -95,7 +100,7 @@ pLogL <- function(input, testing.environment = FALSE){
     theta.i <- reg.out$details$gm.pmg$coefficients[1:N.Indepvars+1]  
       # coeff of lagged INdependent variable
       # as per pesaran1999, theta = -(beta_i / phi_i)
-    theta.hom <- NA # if using homogeneous longrun coefficients
+    theta.hom <- NA # currently not needed. in future if using homogeneous longrun coefficients
     
     # trim beginning NAs in W,X,y
     #   careful, this should only be trimming values from the first few periods due to lags and differences

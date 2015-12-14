@@ -95,7 +95,8 @@ t.start <- Sys.time()
     # trial and error yielded [-0.001,0.001] as stable
       #coef.test["lag(log(y))",] <- coef.y.scale * coef.test["lag(log(y))",]
       coef.test["lag(log(y))",] <- sample(seq(- 0.001, 0.001, by = 0.0001), .I)
-  # restricted model
+  
+    # restricted model
     coef.r.test <- coef.test
     coef.r.test[c(1,2+(1:N.Indepvar.test)),] <- 0
     chisqdf <- 5 # set equal to number of 0 parameters
@@ -234,13 +235,6 @@ t.start <- Sys.time()
              geom_line(aes(x = t, y = value, color = variable)) + 
              facet_wrap(facets = "i"))
     }
-    
-    ### NEXT TODO:
-    ### need to finish input for the CoefTest
-    ### run pLogL on results
-    ### check that Likelihood ratio test is approx Chi-squared distributed
-
-    
     
     input$reg.in <- DF
     fitted.residuals <- rnorm(nrow(DF))
