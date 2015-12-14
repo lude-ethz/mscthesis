@@ -1,3 +1,2 @@
 # mscthesis
-# readme work in progress
-
+readme coming soon
