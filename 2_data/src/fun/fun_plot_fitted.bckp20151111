@@ -1,0 +1,56 @@
+
+z<-df[,1:3]
+z2 <- subset(z, region == "Bezirk Affoltern")
+colnames(z2) <- c("i", "t", "y")
+z2$logy <- log(z2$y)
+z2$logy_l <- c(NA, z2$logy[2:nrow(z2)-1])  # 1 lag
+z2$logy_d <- z2$logy - z2$logy_l  # difference
+z2$logy_d_fitted <- c(rep(0,5),my.coef$details$gm.pmg$fitted.values[1:44])
+z2$e_fitted <- c(rep(0, 5), my.coef$details$gm.pmg$residuals[1:44])
+z2$e_actual <- z2$logy_d - z2$logy_d_fitted
+# z2$e_check <- !as.logical(round(z2$e_actual - z2$e_fitted, 15), na.rm = T)
+z2$logy_reconstr <- reconstruct(z2$logy[5], z2$logy_d_fitted)[-1]
+z2$y_reconstr <- exp(z2$logy_reconstr)
+z2$exp_e_fitted <- exp(z2$e_fitted)
+z2$exp_e_actual <- z2$y - z2$y_reconstr
+# z2$exp_e_check <- !as.logical(round(z2$exp_e_actual -z2$exp_e_fitted,0),na.rm=T)
+
+
+### Visualization
+
+## first using log values
+# plot(z2$logy, col = "black", type = "l")
+# lines(z2$logy_reconstr, col = "red", type ="l")
+# par(new = T)
+# plot(z2$e_actual, 
+#      col = "blue", 
+#      type ="h", 
+#      axes = F, 
+#      ylab = "", 
+#      ylim = c(-max(abs(z2$e_actual), na.rm = T),+max(abs(z2$e_actual), na.rm = T))
+#      )
+# axis(4, col = "black",lwd=1)
+
+## second using level values 
+plot(z2$t, 
+     z2$y, 
+     col = "black", 
+     type = "l", 
+     xlab = "Period", 
+     ylab = "Hedonic Price level", 
+     main = "Fitted Values (red) vs Actual Values (black)",
+     sub = "")
+lines(z2$t,
+      z2$y_reconstr,
+      col = "red", type ="l")
+par(new = T)
+plot(z2$t,
+     z2$exp_e_actual, 
+     col = "blue", 
+     type ="h", 
+     axes = F, 
+     xlab = "",
+     ylab = "", 
+     ylim = c(-max(abs(z2$exp_e_actual)),+max(abs(z2$exp_e_actual)))
+)
+axis(4, col = "black",lwd=1)

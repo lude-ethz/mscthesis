@@ -1,0 +1,6 @@
+Variable,Desc
+date,period of observation
+cpiaX,"Annual CPI with base month X, X given in YYYYMM, (calculated form monthly averages?)"
+ccpia,"Change in annual CPI, yoy"
+cpimX,"Monthly CPI with base month X, X given in YYYYMM"
+ccpim,"Change in monthly CPI, mom"

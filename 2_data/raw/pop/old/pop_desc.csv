@@ -1,0 +1,10 @@
+variable,desc
+year,year of population data
+cantonname,name of canton of the population data
+cantonno,"a number representation for cantonname [0:26], lookup table can be found under pop$cantons"
+typename,"type of population, data distinguishes between permanent reisdents and non-permanent reisdents"
+typeno,"a number representation for typename [0,1], lookup table can be found under pop$type"
+sum,sum of population of this canton and this type
+sum2,"sum of population of this canton, not differentiated between type"
+x0-x99,number of population of specific age
+x100p,number of population aged 100 or more

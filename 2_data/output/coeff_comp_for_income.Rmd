@@ -1,0 +1,73 @@
+---
+title: "coefficient significance comparison for different measures of income"
+author: "DLu"
+date: "October 27, 2015"
+output: pdf_document
+---
+Initialize doc:
+```{r, echo = FALSE}
+WD <- "D:/GoogleDrive/Work/MSc_Thesis/2_data"
+setwd(WD)
+require(plm)
+require(xts)
+require(reshape2)
+load("knitworkspace.RData")
+```
+
+Prints the output of coefficient significance for two estimations, one using
+nominal income measures, one using real income measures (not normalized to the
+starting year)
+
+
+\pagebreak
+\textbf{FOR DFE MODEL (dynamic fixed effect)}
+
+```{r, echo=TRUE }
+my.coef.nominal$coeff.legend
+summary(my.coef.nominal$details$dfe.result)
+summary(my.coef.real$details$dfe.result)
+```
+
+\textbf{Significant Coefficients}
+\begin{tabular}{p{2cm}|p{5cm}|p{5cm}}
+category &
+  nominal &
+  real\\ \hline
+LR coef &
+  y, x1, x2 &
+  y, x1\\
+SR coef & 
+  y all lags, x1 all lags, x2 0-lag, x3 3-4 lag, x4 1-4 lag (0 amplitude)&
+  y all lags, x1 1-4 lag,   , x3 3-4 lag, x4 3-4 lag (0 amplitude)\\
+\end{tabular}
+
+\textbf{dfe.result interpretation}
+
+LR:
+
+ - x1 (nominal income): 10% increase in x1 (pop) causes 4.7% increase in y (price)
+ - x1 (real income): 10% increase in x1 (pop) causes 3.9% increase in y (price)
+
+SR for nominal income
+
+ - x3 (hstock) 3-lag: +1% x3 = +38.5% in y (price)
+ - x3 (hstock) 4-lag: +1% x3 = -20% in y(price) 
+
+SR for real income:
+
+ - x3 (hstock) 3-lag: +1% x3 = +42% in y
+ - x3 (hstock) 4-lag: +1% x3 = -20% in y
+
+
+BUT GM DOES NOT SHOW ANY SIGNIFICANT COEFFICIENTS IN THE LONG RUN FOR ANY OF THE
+FACTORS (except lagged price)
+
+\pagebreak
+\textbf{FOR GROUP MEAN ESTIMATOR (GM)}
+
+```{r, echo=TRUE }
+my.coef.nominal$coeff.legend
+summary(my.coef.nominal$details$gm.pmg)
+summary(my.coef.real$details$gm.pmg)
+```
+

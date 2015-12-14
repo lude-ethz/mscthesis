@@ -1,0 +1,18 @@
+Variable,Desc
+Date,"Date of observation, in days since 1899-12-30"
+1mCHFL,1 month CHF Libor
+3mCHFL,3 month CHF Libor
+6mCHFL,6 month CHF Libor
+12mCHFL,12 month CHF Libor
+1ySNB,1 year Swiss Confederate bond yield
+2ySNB,2 year Swiss Confederate bond yield
+3ySNB,3 year Swiss Confederate bond yield
+4ySNB,4 year Swiss Confederate bond yield
+5ySNB,5 year Swiss Confederate bond yield
+6ySNB,6 year Swiss Confederate bond yield
+7ySNB,7 year Swiss Confederate bond yield
+8ySNB,8 year Swiss Confederate bond yield
+9ySNB,9 year Swiss Confederate bond yield
+10ySNB,10 year Swiss Confederate bond yield
+20ySNB,20 year Swiss Confederate bond yield
+30ySNB,30 year Swiss Confederate bond yield

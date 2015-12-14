@@ -1,0 +1,67 @@
+# Function Gen_formula ---------------------------------------------------------
+GenFormula <- function(vars,
+                        p = 5, q = 5, logs = TRUE, 
+                        form = c("plm", "dynlm")){
+  # Function to create formula for ARDL/ECM model 
+  # input:
+  #   vars...list with variable names as characters
+  #           assume data is sorted in increasing time index for increasing rownumber
+  #   p......number of lags of dependent variable
+  #   q......number of lags of independent variables
+  #   logs...whether or not to use log form for ALL variables
+  #   form...formatting for plm() or dynlm(); for plm use "lag()" and "diff()" for
+  #           dynlm use "L()" and "d()" to represent lagged and differenced 
+  #           variable in the formula
+  # output:
+  #   return...a string which can be interpreted as a formula for plm() or dynlm()
+  #           depending on form
+  
+  
+  # Todo: check variable input type:
+  # ps, q...should be integer only
+  # vars...should be list
+  
+  form <- match.arg(form)
+  
+  if(form == "plm"){
+    dif <- "diff("
+    lag <- "lag("
+  } else {
+    dif <- "d("
+    lag <- "L("
+  }
+  
+  if(logs == TRUE){
+    for (i in 1:length(vars)){
+      vars[[i]] <- paste("log(",vars[[i]],")")
+    }
+  }
+  
+  # create formula left hand side
+  eq <- paste(dif, vars[[1]],") ~ 1")
+  
+  # create ECM term : alpha*( y_t-1 + beta* x_t-1)
+  for (i in 1:length(vars)){
+    tmp <- paste(" + ", lag, vars[[i]], ", 1)",sep = "")
+    eq <- paste(eq, tmp, sep = "")
+  }
+  
+  # create lagged dependent variable y
+  if (p > 1){
+    for (i in 1:(p-1)){
+      tmp <- paste(" + ", lag, dif, vars[[1]], "), ",i,")", sep = "")
+      eq <- paste(eq, tmp, sep = "")
+    }
+  }
+  
+  # add lagged independent variable x
+  if (q > 1){
+    for (i in 2:length(vars)){ #for each x
+      for (j in 0:(q-1)){ # create q-1 lagged derences
+        tmp <- paste(" + ", lag, dif, vars[[i]], "), ", j, ")", sep = "")
+        eq <- paste(eq, tmp, sep = "")
+      }
+    }
+  }
+  as.formula(eq)
+}

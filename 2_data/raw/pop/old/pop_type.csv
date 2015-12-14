@@ -1,0 +1,3 @@
+typename,typeno,desc
+perm,0,"permanently resident population (ger: ""Staendige Wohnbevoelkerung"")"
+nonperm,1,"non-permanently resident population (ger: ""Nichtstaendige Wohnbevoelkerung"")"
