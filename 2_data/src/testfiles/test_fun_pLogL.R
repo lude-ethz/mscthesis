@@ -286,7 +286,7 @@ if( N.exp.growth != 0 )
       "some have exponential growth to infinity\n",
       " -> TRY: adjusting parameter \"coef.scale\" and \"coef.y.scale\"\n")
 
-# vizualise
+# vizualise example of generated data, from last test iteration
 ggDF <- ggplot(melt(DF, id.vars = c("i", "t")))
 plot(ggDF +
        geom_line(aes(x = t, y = value, color = variable)) + 
@@ -308,12 +308,14 @@ if(plot.y){
          #facet_wrap(facets = "variable")
 }
 
+# qqplot of LogLikelihood ratio
 qqplot(qchisq(ppoints(1000), df = chisqdf), LL.ratio.all,
        main = expression("Q-Q plot for" ~~ {chi^2}[nu == chisqdf]))
-qqline(LL.ratio.all, distribution = function(p) qchisq(p, df = 3),
+qqline(LL.ratio.all, distribution = function(p) qchisq(p, df = chisqdf),
        prob = c(0.25, 0.75), col = 2)
 mtext("qqline(*, dist = qchisq(., df=5), prob = c(0.25, 0.75))")
 
+# histogram of LogLikelihood ratio
 histogram <- data.frame(LL.ratio.all = as.numeric(LL.ratio.all), 
                         rchisq = rchisq(10000, df = 5))
 plot(ggplot(histogram) + 
