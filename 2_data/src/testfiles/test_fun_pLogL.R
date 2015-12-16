@@ -380,7 +380,7 @@ plot(ggplot(hist.gg) +
   plot(plot.coef.error.gg +
          geom_boxplot(aes(x = regterm, y = value)) + 
          geom_hline(aes(yintercept = 0), color = "red") +
-         geom_point(aes(x = regterm, y = value, color = iteration), alpha=0.2) +
+        # geom_point(aes(x = regterm, y = value, color = iteration), alpha=0.2) +
          facet_wrap(facet = "region") + 
          labs(title = paste("Boxplot of coefficient estimation errors\n", 
                             "for each regression term\n",
@@ -392,7 +392,7 @@ plot(ggplot(hist.gg) +
   plot.coef.error2.gg <- ggplot(plot.coef.error.df[plot.coef.error.df$regterm != "intercept",])
   plot(plot.coef.error2.gg +
          geom_boxplot(aes(x = regterm, y = value)) + 
-         geom_point(aes(x = regterm, y = value, color = iteration), alpha=0.2) +
+       # geom_point(aes(x = regterm, y = value, color = iteration), alpha=0.2) +
          facet_wrap(facet = "region") + 
          labs(title = paste("Boxplot of coefficient estimation errors\n", 
                             "for each regression term\n",
