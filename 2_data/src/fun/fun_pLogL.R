@@ -132,7 +132,6 @@ pLogL <- function(input, testing.environment = FALSE){
     # calc log-likelihood of entire panel
     pll1 <- -.T / 2 * sum(log(2*pi) + log(sigma.i^2))
     pll2 <- -0.5 * sum(t(term$term) %*% H %*% term$term / sigma.i^2)
-    
     pll <- pll + pll1 + pll2  
   }
   pll

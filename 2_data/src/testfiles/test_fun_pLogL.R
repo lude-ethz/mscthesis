@@ -10,6 +10,8 @@
 # -> distribution of D ~ chi^2 with df(H_alt model) - df(H_0 model)
 ####
 
+set.seed(21)  # set seed for RNG if needed for reproducible results 
+
 #### SCRIPT START ##############################################################
 require(plm)
 require(ggplot2)
@@ -18,50 +20,61 @@ require(reshape2)
 WD <- "D:/GoogleDrive/Work/MSc_Thesis/2_data"
 setwd(WD)
 source(file.path("src", "fun", "fun_pLogL.R"))
+source(file.path("src", "fun", "fun_testcoeffhomogen.R"))
+source(file.path("src", "fun", "fun_genformula.R"))
 
 # DEFINE PARAMETERS ------------------------------------------------------------
 # model parameters
-factors.test <- c("x1", "x2", "x3", "x4")# names of independent variables  
-.I <- 2  # [MIN = 2] regions/groups in test 
-.T <- 100  # time periods per region in test, >= .P+2
-.P <- 5  # no. of lags of dependent variable (in levels) 
-.Q <- 5  # no. of lags of independent variable (in levels) 
+  factors.test <- c("x1", "x2", "x3", "x4")# names of independent variables  
+  factors.test <- c("x1", "x2", "x3")# names of independent variables  
+  .I <- 4  #  regions/groups in test [min = 2]
+  .T <- 100  # time periods per region in test, >= .P+2
+  .P <- 5  # no. of lags of dependent variable (in levels) 
+  .Q <- 5  # no. of lags of independent variable (in levels) 
 # test parameters
-N.test <- 25 # number of iterations to run
-coef.sd <- 1  # sd used for generating random coefficients
-coef.mean <- 0  # mean used for generating random coefficients
-coef.scale <- 0.1 # coef scaling factor, for coef.scale*rnorm()
-  # ~0.1 seems to be robust for reconstrucing Y based on ~100 iterations
-coef.y.scale <- 0.1 # coef for lag(log(y)) term, multiplicative w/ coef.scale
-  # if = 1, seemingly always causes exponential decrease of Y to 0, if 0.1, roughly random walk
-y.stoch.mean <- 0  # mean used for generating stoch. part of y
-y.stoch.sd <- 1  # sd used for generating stoch part of y
-y.stoch.scale <- 1  # y = f(y,x1,... ,xn) + y.stoch.scale*rnorm()
-plot.y <- TRUE  # plot overview of al generated Y plots?
-plot.iterations <- FALSE # review each iterations' plots? mostly for debug
-set.seed(22)  # set seed for RNG if needed for reproducible results 
-  # (how does this influence each iterations random number generation?
-  #  e.g. are the N-iterations of the test still different from each other? (should be?))
+  N.test <- 100 # number of iterations to run [min = 1]
+  coef.sd <- 1  # sd used for generating random coefficients
+  coef.mean <- 0  # mean used for generating random coefficients
+  coef.scale <- 0.1 # coef scaling factor, for coef.scale*rnorm()
+    # ~0.1 seems to be robust for reconstrucing Y based on ~100 iterations
+  coef.y.scale <- 0.01 # coef for lag(log(y)) term, multiplicative w/ coef.scale
+    # if = 1, seemingly always causes exponential decrease of Y to 0, if 0.1, roughly random walk
+  y.stoch.mean <- 0  # mean used for generating stoch. part of y
+  y.stoch.sd <- 1  # sd used for generating stoch part of y
+  y.stoch.scale <- 1  # y = f(y,x1,... ,xn) + y.stoch.scale*rnorm()
+  plot.y <- TRUE  # plot overview of al generated Y plots?
+  plot.iterations <- FALSE # review each iterations' plots? mostly for debug
+
+# additional debug parameters 
+# WORK IN PROGRESS , currently not 100% bug free #
+  add.y.lin.trend <- FALSE  # add a linear trend on generated y and x1?
+    # idea: if TRUE, then x1 should explain majority of y, therefore restricting
+    # the model to have coef_x1 = 0 should yields significant difference in 
+    # explanatory power
 ## end parameters ---
 
 
 #### TEST START ################################################################
-Rprof("profie_pLogL_test.out") # profile code below for debugging
+Rprof("profile_pLogL_test.out") # profile code below for debugging
 
 # derive some more parameters
 N.Indepvar.test <- length(factors.test)  # no. of independent variables
 N.regression.terms <-   # number of regression terms:
   1+1+N.Indepvar.test+.P-1+(.Q)*N.Indepvar.test
   # diff(y)~const +lag y +lag(xn) +(p-1)*lag(diff(y)) +(q-1)*lag(diff(xn))
-Logs.test <- rep(TRUE, N.Indepvar.test)  # use logs for all y, x1, ..., xn
+Logs.test <- c(rep(TRUE, N.Indepvar.test))  # use logs for all y, x1, ..., xn
 
 # Initialize variables
 N.exp.growth <- 0
 N.stable <- 0
 N.exp.decay <- 0
-if(plot.y) all.iterated.y <- numeric()
-
 LL.ratio.all <- vector(mode = "numeric")  # Log likelihood ratio of all test iterations
+estimated.ind.coef <- list()  # lists for estimated coefficients
+estimated.ind.coef.errors <- list()  # list for errors of estimated coefficients
+if(plot.y) 
+  plot.all.estimated.y <- vector(mode = "list")
+# anov.all <- vector(mode = "list")
+
 input <- list()  # initialize artificial regression input list
 input$args <- list(P = .P,  # populate params
                    Q = .Q,
@@ -73,16 +86,15 @@ DF <- data.frame(  # initialize artificail regression input data
 
 # GENERATE COEFFICIENTS ----------------------------------------------------------
 t.start <- Sys.time()  
-  # coef.test...data frame, columns are regions, rows are regression terms
-  
-  # unrestricted model: generate random coeficients
-    coef.test <- data.frame(matrix(NA, ncol = .I, nrow = N.regression.terms))
+
+  # unrestricted model
+    coef.ur.test <- data.frame(matrix(NA, ncol = .I, nrow = N.regression.terms))
     for(i in 1:.I){
-      coef.test[,i]<- 
+      coef.ur.test[,i]<- 
         coef.scale * rnorm(N.regression.terms, sd = coef.sd, mean = coef.mean)
     }
-    colnames(coef.test) <- paste("i.", 1:.I, sep = "")
-    rownames(coef.test) <- c(
+    colnames(coef.ur.test) <- paste("i.", 1:.I, sep = "")
+    rownames(coef.ur.test) <- c(
       "intercept",
       "lag(log(y))",
       paste("lag(log(x", 1:N.Indepvar.test,"))", sep=""),
@@ -93,16 +105,20 @@ t.start <- Sys.time()
     # constrain AR coefficient, so its a stable AR process:
     # alpha*y_(t-1) 
     # trial and error yielded [-0.001,0.001] as stable
-      #coef.test["lag(log(y))",] <- coef.y.scale * coef.test["lag(log(y))",]
-      coef.test["lag(log(y))",] <- sample(seq(- 0.001, 0.001, by = 0.0001), .I)
+      coef.ur.test["lag(log(y))",] <- coef.y.scale * coef.ur.test["lag(log(y))",]
+      # alternate way of sampling coeffs for lag(log(y)) term
+      #coef.ur.test["lag(log(y))",] <- sample(seq(- 0.001, 0.001, by = 0.0001), .I)
   
-    # restricted model
-    coef.r.test <- coef.test
-    coef.r.test[c(1,2+(1:N.Indepvar.test)),] <- 0
-    chisqdf <- 5 # set equal to number of 0 parameters
+  # restricted model
+    coef.r.test <- coef.ur.test
+    if(add.y.lin.trend){ # if add.y.lin.trend = TRUE (to test for obvious case)
+      coef.r.test[c(1,3),] <- 0 # set only x1 to 0
+    } else {
+      coef.r.test[c(1,2+(1:N.Indepvar.test)),] <- 0   # set all lag(x1...xn) = 0
+    }
+    chisqdf <- sum(coef.r.test == 0)/.I # set equal to number of 0 parameters
 
-
-# SIMULATE INPUT/OUTPUT OF TestcoefHomogen ------------------------------------
+# SIMULATE INPUT/OUTPUT OF TestcoeffHomogen ------------------------------------
   for(iteration in 1:N.test){
     # y.calc <- numeric() # storage for calculated y series from x1...xn
     y.calc <- vector(mode = "list", length = N.test)
@@ -113,6 +129,7 @@ t.start <- Sys.time()
       tmp.y[[i]] <- c(100+cumsum(rnorm(.P)),rep(NA,.T-.P))
     }
     DF$y <- unlist(tmp.y)
+# old implementetation: with dynamic growth (memory intense)
 #     tmp.y <- numeric()
 #     for(i in 1:.I){
 #       tmp.y <- c(tmp.y, c(100+cumsum(rnorm(.P)),rep(NA,.T-.P)))
@@ -129,6 +146,11 @@ t.start <- Sys.time()
       DF[j] <- unlist(tmp.x)
     }
     rm(tmp.x)
+
+    if(add.y.lin.trend) # debug: add linear trend to x1 (and later y) if desired
+      DF[factors.test[1]] <- 100+ cumsum(rnorm(.T)+1)
+
+    # old implementetation: with dynamic growth (memory intense)
 #     for(j in factors.test){
 #       tmp.x <- vector(mode = "numeric")
 #       for(i in 1:.I){
@@ -140,14 +162,13 @@ t.start <- Sys.time()
     
     # convert to panel-DF for easy handling of lagging and differencing
     # create lagged and differenced log-sequences in new panel-DF "model"
-
     pDF <- pdata.frame(DF)
     model <- pDF[,1:2]
     model <- cbind(model, diff(log(pDF$y)))
     colnames(model)[3] <- "diff(log(y))"
     for(i in 0:N.Indepvar.test){ # lagged long run variables (y, x1, ..., xn)
       model <- cbind(model,lag(log(pDF[[3+i]])))
-      colnames(model)[ncol(model)] <- rownames(coef.test)[2+i]
+      colnames(model)[ncol(model)] <- rownames(coef.ur.test)[2+i]
     }  
     
     for(i in 1:(.P-1)){ # lagged dependent variable
@@ -189,7 +210,7 @@ t.start <- Sys.time()
       # back out last period for level y of this region
       SS.y.last <- exp(SS[nrow(SS),4] + SS[nrow(SS),3])
       # append to y.calc for later use
-      y.calc[[iteration]] <- c(SS.y, SS.y.last)
+      y.calc[[j]] <- c(SS.y, SS.y.last)
       
       if(any(SS.y == Inf) || SS.y.last > (SS.y[1] * 10)){
         N.exp.growth <- N.exp.growth + 1
@@ -200,7 +221,7 @@ t.start <- Sys.time()
       }
       # check if not shrinking more than 10x initial value
 
-      rm(SS.y.last)
+     rm(SS.y.last)
     }
     rm(SS, y.k)
     y.calc <- unlist(y.calc)
@@ -209,24 +230,15 @@ t.start <- Sys.time()
     # generate a stochastic part of level y
     y.stoch <- rnorm(length(y.calc), mean = y.stoch.mean, sd = y.stoch.sd)
     
+    y.lin <- 0
+    if(add.y.lin.trend){
+      y.lin <- rep(1:.T, times = .I)
+    }
     # assign final to DF
-    DF$y <- y.calc + y.stoch.scale * y.stoch  # assign reconstructed
+    DF$y <- y.calc + y.stoch.scale * y.stoch + y.lin  # assign reconstructed
     
     # save current iteration y for later plotting
-    all.iterated.y <- cbind(all.iterated.y, DF$y)
-    
-    # optional stats: check if not growing more than 10x initial value
-    # OPTIONAL TODO: this should also be done on a regional basis
-#     DFy.check <- DF$y
-#     DFy.check[is.na(DFy.check)] <- 0
-#     if(any(abs(DFy.check) > (DF$y[1] * 10))){
-#       N.exp.growth <- N.exp.growth + 1
-#     } else {
-#       N.stable <- N.stable + 1
-#     }
-#     # check if not shrinking more than 10x initial value
-#     if(DF$y[nrow(DF)] <= DF$y[1]/10) N.exp.decay <- N.exp.decay + 1
-#     rm(DFy.check)
+    plot.all.estimated.y[[iteration]] <- DF$y
     
     # if enabled, plot y,x1,...,xn for this test iteration
     if(plot.iterations){
@@ -244,62 +256,93 @@ t.start <- Sys.time()
               fitted.values = DF$y + fitted.residuals , 
                 # fitted = DF$y + fitted.residuals
               residuals = fitted.residuals,
-              ind.coef = coef.test,
-              coefficients = rowSums(coef.test)/ncol(coef.test))
+              ind.coef = coef.ur.test,
+              coefficients = rowSums(coef.ur.test)/ncol(coef.ur.test))
             ))  
     input.r <- input
     input.r$reg.out$details$gm.pmg$ind.coef <- coef.r.test
-    input.r$reg.out$details$gm.pmg$coefficients <- rowSums(coef.r.test)/ncol(coef.test)
+    input.r$reg.out$details$gm.pmg$coefficients <- rowSums(coef.r.test)/ncol(coef.ur.test)
     
     LL.ur <- pLogL(input, testing.environment = TRUE)
     LL.r <- pLogL(input.r, testing.environment = TRUE)
     LL.ratio <-  -2*LL.r +2*LL.ur
-    LL.ratio.all <- cbind(LL.ratio.all, LL.ratio)
+    LL.ratio.all[[iteration]] <- LL.ratio
     
+    # NOW TO COMPARE _generated_ vs _estiamted_ coeffs:
+    # estiamte coeffs with implemented TestCoeffHomogen(),
+     suppressWarnings( # supress likely warning that "my.formula" already in use
+       tmp.estimation <- TestCoeffHomogen(DF, p = .P, q = .Q, logs = Logs.test))
+     tmp.estimation.indcoef <- tmp.estimation$details$gm.pmg$indcoef
+     estimated.ind.coef[[iteration]] <- tmp.estimation.indcoef  # save estimated
+     estimated.ind.coef.errors[[iteration]] <- tmp.estimation.indcoef - coef.r.test
+      # save errors for later
+ 
     cat(iteration, " of ", N.test, " done | LL.ratio = ", LL.ratio, "\n", sep = "")
   }
-  LL.ratio.all
+#### end test simulation loop ###
+  # unlist all necessary lists:
+    estimated.ind.coef <- as.data.frame(estimated.ind.coef)
+    estimated.ind.coef.errors <- as.data.frame(estimated.ind.coef.errors)
+      #adjust colnames
+      tmp.col.names <- paste(rep(paste("N",1:N.test,sep =""), each = .I),
+                             rep(paste("I",1:.I, sep=""), times = N.test), 
+                             sep = ".")
+      colnames(estimated.ind.coef) <- tmp.col.names
+      colnames(estimated.ind.coef.errors) <- tmp.col.names
+      rm(tmp.col.names)
+    plot.all.estimated.y <- data.frame(matrix(unlist(plot.all.estimated.y), nrow = .T*.I))
+      colnames(plot.all.estimated.y) <- paste("N",1:N.test, sep = "")
   t.end <- Sys.time()
   # end profiling
-  Rprof(NULL) # print summary at end of code
-#### end test simulations ###
-####
+  Rprof(NULL)
 
-# Test iteration summaries -----------------------------------------------------
-t.tot <- t.end-t.start
-
-# dispaly some stats
-cat("##### TESTING DONE",
-    "\n Iterations = ", N.test, ", Duration = ", t.tot,
-    "\n # exp. growth Y series = ", N.exp.growth,
-    "\n # stable Y series= ", N.stable, 
-    "\n # exponential decrease Y series = ", N.exp.decay ,
-    "\n####\n")
+# Summary statistics -----------------------------------------------------------
+t.tot <- t.end-t.start # approximate time used
+cat("##### TESTING DONE\n")
+if(add.y.lin.trend)
+  cat(" # Debug: Added linear trend to x and y")
+cat(" Iterations = ", N.test, ", Duration = ", t.tot, "\n",
+    " # Total no. of generated Y series = ", N.test*.I, "\n",
+    " # exp. growth Y series = ", N.exp.growth, "\n",
+    " # stable Y series= ", N.stable,  "\n",
+    " # exponential decrease Y series = ", N.exp.decay , "\n",
+    "####\n")
 if( N.exp.growth != 0 )
   cat("WARNING: plotting of generated Y likely to fail because\n",
       "some have exponential growth to infinity\n",
       " -> TRY: adjusting parameter \"coef.scale\" and \"coef.y.scale\"\n")
+rm(t1, t2, t.tot)
+# PLOT RESULTS -----------------------------------------------------------------
+cat("Plotting to file...\n")
+FP <- paste("test_fun_pLogL_",format(Sys.time(),"%Y%m%d_%H%M%S"),".pdf",
+                  sep = "") 
+pdf(file = FP)
 
-# vizualise example of generated data, from last test iteration
+# Plot example of one iteration data
 ggDF <- ggplot(melt(DF, id.vars = c("i", "t")))
 plot(ggDF +
        geom_line(aes(x = t, y = value, color = variable)) + 
        facet_wrap(facets = "i") +
-       ggtitle(paste("Time Series for each panel in last (", iteration,"th) iteration")))
+       ggtitle(paste("Example of Data generated during one iteration cycle\n\n",
+                     "Plotting: variables = all, regions = all,",
+                     "Iteration = ", iteration,"th iteration (last)\n",
+                      sep=""))
+     )
 
 
-# vizualise all generated y
+# Plot all generated y
 if(plot.y){
-  plot.ys <- as.data.frame(all.iterated.y)
-  colnames(plot.ys) <- paste("k.",1:ncol(plot.ys), sep = "")
-  plot.ys <- melt(plot.ys)
-  plot.ys <- 
-    cbind(series = rep(1:.I*N.test,each = .T) ,t = 1:.T,plot.ys)
+  plot.ys <- melt(plot.all.estimated.y)
+  plot.ys <- data.frame(iteration = plot.ys$variable,
+                        i = rep(1:.I,each = .T, times = N.test),
+                        t = 1:.T,
+                        value = plot.ys$value)
   plot(ggplot(plot.ys) +
-         geom_point(aes(x = t , y = value, color = series), alpha = 1/2) +
-         ggtitle(paste("Plot of all generated Y-series\n Total #series:",
-                       .I*N.test, sep="")))
-         #facet_wrap(facets = "variable")
+         geom_point(aes(x = t , y = value, color = iteration), alpha = 1/3) +
+         facet_wrap(facets = "i") +
+         ggtitle(paste("Plot for generated variable = Y,\n",
+                       "regions = all, iteration = all \n", sep=""))
+      )
 }
 
 # qqplot of LogLikelihood ratio
@@ -309,12 +352,74 @@ qqline(LL.ratio.all, distribution = function(p) qchisq(p, df = chisqdf),
        prob = c(0.25, 0.75), col = 2)
 mtext("qqline(*, dist = qchisq(., df=5), prob = c(0.25, 0.75))")
 
-# histogram of LogLikelihood ratio
-histogram <- data.frame(LL.ratio.all = as.numeric(LL.ratio.all), 
+# histogram of LogLikelihood ratio vs chi squared distribution
+hist.gg <- data.frame(LL.ratio.all = as.numeric(LL.ratio.all), 
                         rchisq = rchisq(10000, df = 5))
-plot(ggplot(histogram) + 
-  geom_histogram(aes(LL.ratio.all, fill = "red", alpha = 0.2)) + 
-  geom_histogram(aes(rchisq, fill = "blue", alpha = 0.2)) + 
-  ggtitle("Histogram of LL.ratio.all vs a chi-square distributed random sample\n mu = 5"))
+plot(ggplot(hist.gg) + 
+       geom_histogram(aes(LL.ratio.all, color = "LL.ratio.all"), binwidth = 1,
+                      fill="red", alpha = 0.2) + 
+       geom_histogram(aes(rchisq, color = "qchisq"), binwidth = 1,
+                      fill = "blue", alpha = 0.2) + 
+       labs(title = paste("Histogram of LL.ratio.all vs chi-square distrib.",
+            "random sample\n mu = 5"),
+            y = "count",x = "value")
+     )
 
-cat("To view code profiling exec \"summaryRprof(\"profile_pLogL_test.out\")\"")
+# Visualize estimated coefficients errors
+#   coefficients are stored in: estimated.ind.coef
+#   errors stored in: estimated.ind.coef.errors
+  plot.coef.error.df <- melt(t(estimated.ind.coef.errors))
+  colnames(plot.coef.error.df) <- c("iter.region", "regterm", "value")
+  tmp.indx <- colsplit(string = as.character(plot.coef.error.df$iter.region), 
+                  pattern = ".I", 
+                  names = c("iteration", "region"))
+  plot.coef.error.df <- cbind(tmp.indx, plot.coef.error.df)
+  rm(tmp.indx)
+  hist.width <- 0.1
+  plot.coef.error.gg <- ggplot(plot.coef.error.df)
+  plot(plot.coef.error.gg +
+         geom_boxplot(aes(x = regterm, y = value)) + 
+         geom_hline(aes(yintercept = 0), color = "red") +
+         geom_point(aes(x = regterm, y = value, color = iteration), alpha=0.2) +
+         facet_wrap(facet = "region") + 
+         labs(title = paste("Boxplot of coefficient estimation errors\n", 
+                            "for each regression term\n",
+                            "colored by iteration")) + 
+         theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+                 plot.margin = unit(c(0,0,0,0),"mm"))
+      )
+  #plot without estimation errors for "intercept"
+  plot.coef.error2.gg <- ggplot(plot.coef.error.df[plot.coef.error.df$regterm != "intercept",])
+  plot(plot.coef.error2.gg +
+         geom_boxplot(aes(x = regterm, y = value)) + 
+         geom_point(aes(x = regterm, y = value, color = iteration), alpha=0.2) +
+         facet_wrap(facet = "region") + 
+         labs(title = paste("Boxplot of coefficient estimation errors\n", 
+                            "for each regression term\n",
+                            "colored by iteration\n[no intercept]")) + 
+         theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+               plot.margin = unit(c(0,0,0,0),"mm"))
+      )
+  plot(plot.coef.error2.gg + 
+         geom_histogram(aes(value), binwidth = hist.width, alpha = 0.75) +
+         geom_vline(aes(xintercept = 0), color = "red") +
+         facet_wrap(facets = "regterm") + 
+         ggtitle(paste("Coefficient estimation error histograms\n",
+                       "by regression term\n Width = ", hist.width))
+       )
+  # plot actual coefficients used to generate data
+  plot.coef.r <- ggplot(melt(t(coef.r.test)))
+  plot(plot.coef.r + 
+         geom_point(aes(x = Var2, y = value), color = "red") +
+         facet_wrap(facets = "Var1") +
+         labs(title = paste("Actual coefficients used for test")) + 
+         theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+               plot.margin = unit(c(0,0,0,0),"mm"))
+       )  
+dev.off()
+# END PLOTTING
+cat("Done plotting.\n Output in", file.path(getwd(),FP), "\n")
+rm(FP)
+
+
+cat("To view code profiling use \"summaryRprof(\"profile_pLogL_test.out\")\"")

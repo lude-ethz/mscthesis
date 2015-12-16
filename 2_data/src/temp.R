@@ -104,7 +104,7 @@
   WD <- "D:/GoogleDrive/Work/MSc_Thesis/2_data"
   setwd(WD)
   source(file.path("src", "fun_model_national.R"))
-  source(file.path("src", "model_national_graphical_eval.R"))
+  source(file.path("src", "fun","fun_PlotCoefComparison.R"))
   
   # all factors
   r.5 <- National.Model(P = 5 , Q = 5, load.data = T, plot.input = TRUE)
@@ -241,35 +241,35 @@
   x$x <- diff(x[["X3"]], 1)
   x$X3.dl2 <- diff(x[["X3.l2"]],1)
 
-  # 02.Dec.2015
-  rm(list=ls())
-  WD <- "D:/GoogleDrive/Work/MSc_Thesis/2_data"; setwd(WD)
-  source(file.path("src", "fun_model_national.R"))
-  source(file.path("src", "model_national_graphical_eval.R"))
-  
-  r.5 <- National.Model(P = 5 , Q = 5, load.data = T)  
-  
-  art.in <- list()
-  art.in$reg.in <- matrix(data = c(rep(1:2,each = 10), rep(1:10,2), # region,time
-                            c((1:10)^(1),(1:10)^(1)) + rnorm(20), # y
-                            rep(-4:5, 2) + rnorm(20),  # x1
-                            seq(5,6, length.out = 20)), # x2
-                          nrow = 20,
-                          dimnames = list(1:20, c("i", "t", "y", "x1", "x2")))
-  art.in$reg.in <- as.data.frame(art.in$reg.in)
-  art.in$args <- list(P = 5,
-                     Q = 5,
-                     model.factors = colnames(art.in$reg.in)[-c(1:3)],
-                     Logs = c(F,F))
-  rndm <- rnorm(20)
-  art.in$reg.out <- list(
-    details = list(
-      dfe.result = NA,
-      gm.pmg = list(
-        fitted.values = art.in$reg.in$y + rndm,
-        residuals = rndm,
-        coefficients = 
-        rnorm(1+
-              art.in$args$P+
-              length(art.in$args$model.factors)*art.in$args$Q)),
-      gm.pvcm = NA))
+  # 02.Dec.2015 - this part expanded into test_fun_pLogL.R; a test for my implementation of the panel log likelihood test
+#   rm(list=ls())
+#   WD <- "D:/GoogleDrive/Work/MSc_Thesis/2_data"; setwd(WD)
+#   source(file.path("src", "fun_model_national.R"))
+#   source(file.path("src", "model_national_graphical_eval.R"))
+#   
+#   r.5 <- National.Model(P = 5 , Q = 5, load.data = T)  
+#   
+#   art.in <- list()
+#   art.in$reg.in <- matrix(data = c(rep(1:2,each = 10), rep(1:10,2), # region,time
+#                             c((1:10)^(1),(1:10)^(1)) + rnorm(20), # y
+#                             rep(-4:5, 2) + rnorm(20),  # x1
+#                             seq(5,6, length.out = 20)), # x2
+#                           nrow = 20,
+#                           dimnames = list(1:20, c("i", "t", "y", "x1", "x2")))
+#   art.in$reg.in <- as.data.frame(art.in$reg.in)
+#   art.in$args <- list(P = 5,
+#                      Q = 5,
+#                      model.factors = colnames(art.in$reg.in)[-c(1:3)],
+#                      Logs = c(F,F))
+#   rndm <- rnorm(20)
+#   art.in$reg.out <- list(
+#     details = list(
+#       dfe.result = NA,
+#       gm.pmg = list(
+#         fitted.values = art.in$reg.in$y + rndm,
+#         residuals = rndm,
+#         coefficients = 
+#         rnorm(1+
+#               art.in$args$P+
+#               length(art.in$args$model.factors)*art.in$args$Q)),
+#       gm.pvcm = NA))
